@@ -103,16 +103,16 @@
     <div class="fld"><label>Opponents</label>
       <div class="stepper"><button onclick="bumpOpp(-1)">−</button><span id="oppN">2</span><button onclick="bumpOpp(1)">+</button></div>
     </div>
-    <div class="fld" style="margin-left:auto"><label>Blinds</label>
-      <input id="sb" class="mini" type="number" inputmode="decimal" step="0.5" min="0" value="1"> /
-      <input id="bb" class="mini" type="number" inputmode="decimal" step="0.5" min="0" value="2">
+    <div class="fld" style="margin-left:auto"><label>Blinds ¢</label>
+      <input id="sb" class="mini" type="number" inputmode="numeric" step="5" min="0" value="5"> /
+      <input id="bb" class="mini" type="number" inputmode="numeric" step="5" min="0" value="10">
     </div>
   </div>
 
   <div class="label" style="margin-top:12px">Betting — tap as it goes around</div>
   <div class="acts">
     <button class="act" onclick="oppCall()">Call</button>
-    <span class="raisegrp"><input id="raiseTo" class="mini" type="number" inputmode="decimal" step="0.5" placeholder="to $"><button class="act prime" onclick="oppRaise()">Raise</button></span>
+    <span class="raisegrp"><input id="raiseTo" class="mini" type="number" inputmode="numeric" step="5" placeholder="to ¢"><button class="act prime" onclick="oppRaise()">Raise</button></span>
     <button class="act ghost" onclick="oppFold()">Fold</button>
     <button class="act ghost" onclick="nextStreet()">Next st.</button>
     <button class="act ghost" onclick="postBlinds()">Blinds</button>
@@ -120,8 +120,8 @@
   </div>
 
   <div class="row" style="margin-top:12px">
-    <div class="fld"><label>Pot $</label><input id="pot" type="number" inputmode="decimal" step="0.5" min="0" value="0" oninput="recompute()"></div>
-    <div class="fld" style="margin-left:auto"><label>To call $</label><input id="toCall" type="number" inputmode="decimal" step="0.5" min="0" value="0" oninput="recompute()"></div>
+    <div class="fld"><label>Pot ¢</label><input id="pot" type="number" inputmode="numeric" step="5" min="0" value="0" oninput="recompute()"></div>
+    <div class="fld" style="margin-left:auto"><label>To call ¢</label><input id="toCall" type="number" inputmode="numeric" step="5" min="0" value="0" oninput="recompute()"></div>
   </div>
 </div>
 
@@ -185,7 +185,8 @@ function hasOESD(cards){ let rs=[...new Set(cards.map(c=>RVAL[c[0]]))]; if(rs.in
   for(let i=0;i+3<rs.length;i++) if(rs[i+3]-rs[i]===3) return true; return false; }
 
 const STREET = b => b===0?'Preflop' : b===3?'Flop' : b===4?'Turn' : b===5?'River' : '—';
-const money = n => '$'+(Math.round(n*100)/100).toLocaleString(undefined,{minimumFractionDigits:(Math.abs(n)%1?2:0),maximumFractionDigits:2});
+const money = n => Math.round(n) + '¢';            // amounts are whole cents (nickel/dime game)
+const round5 = n => Math.round(n/5)*5;                   // round suggested sizes to the nearest nickel
 const pct = x => (x*100).toFixed(0)+'%';
 
 // ---- recommendation ----
@@ -204,11 +205,11 @@ function recommend(){
 
   let action, size=null, why;
   if(toCall <= 0){                                   // no bet to us: check or bet
-    if(eq >= 0.58){ action='BET'; size=0.6*(pot||0); why='you’re ahead of the field — bet for value'; }
-    else if(draw && eq >= 0.34){ action='BET'; size=0.55*(pot||0); why='strong draw — semi-bluff for fold equity + outs'; }
+    if(eq >= 0.58){ action='BET'; size=round5(0.6*(pot||0)); why='you’re ahead of the field — bet for value'; }
+    else if(draw && eq >= 0.34){ action='BET'; size=round5(0.55*(pot||0)); why='strong draw — semi-bluff for fold equity + outs'; }
     else { action='CHECK'; why = eq>=0.45 ? 'playable but not a clear value bet — control the pot' : 'not enough to bet into the field'; }
   } else {                                           // facing a bet: raise / call / fold
-    if(eq >= 0.72){ action='RAISE'; size=pot + 2*toCall; why='well ahead — raise for value'; }
+    if(eq >= 0.72){ action='RAISE'; size=round5(pot + 2*toCall); why='well ahead — raise for value'; }
     else if(eq >= potOdds + 0.03){ action='CALL'; why='your equity beats the price you’re paying'; }
     else if(draw && eq >= potOdds){ action='CALL'; why='drawing and getting about the right price'; }
     else { action='FOLD'; why='equity is below the price — folding is best'; }
@@ -272,8 +273,8 @@ function bumpOpp(d){ snap(); opps=Math.max(1,Math.min(9,opps+d)); $('oppN').text
 const r2 = n => Math.round(n*100)/100;
 const getPot = () => Math.max(0, parseFloat($('pot').value)||0);
 const getCall = () => Math.max(0, parseFloat($('toCall').value)||0);
-const setPot = v => { $('pot').value = r2(v); };
-const setCall = v => { $('toCall').value = r2(v); };
+const setPot = v => { $('pot').value = Math.round(v); };    // whole cents
+const setCall = v => { $('toCall').value = Math.round(v); };
 let betStack = [];
 function snap(){ betStack.push({ pot:getPot(), call:getCall(), opps }); if(betStack.length>50) betStack.shift(); }
 function postBlinds(){ snap(); const sb=parseFloat($('sb').value)||0, bb=parseFloat($('bb').value)||0; setPot(getPot()+sb+bb); setCall(bb); recompute(); }
