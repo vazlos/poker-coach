@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c1411">
+<title>Poker Coach</title>
+<style>
+  :root{
+    --bg:#0c1411; --felt:#0f4d34; --ink:#f3f1ea; --dim:#9fb0a6; --gold:#e9c46a;
+    --line:rgba(255,255,255,.12); --panel:#141c19; --ok:#4bd08a; --bad:#e0533f; --warn:#e0a24a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;}
+  body{background:radial-gradient(120% 80% at 50% -10%,#16241d,#0c1411 55%);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100dvh;padding:10px 10px 28px;max-width:560px;margin:0 auto;-webkit-font-smoothing:antialiased;}
+  header{display:flex;align-items:center;gap:8px;padding:4px 2px 10px;}
+  header h1{margin:0;font-size:16px;letter-spacing:.5px;color:var(--gold);font-weight:800;}
+  header .sub{font-size:12px;color:var(--dim);margin-left:auto;}
+
+  .card-box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:0 0 6px;}
+
+  .slots{display:flex;gap:6px;flex-wrap:wrap;}
+  .slot{width:42px;height:58px;border-radius:7px;border:1.5px dashed var(--line);background:rgba(255,255,255,.03);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#15110c;position:relative;}
+  .slot.sep{margin-left:8px;}
+  .slot .pc{width:100%;height:100%;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#f7f5ef;border:1px solid #c9c3b4;}
+  .slot.filled{border-style:solid;cursor:pointer;}
+  .board-row{display:flex;gap:6px;align-items:center;}
+
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .row + .row{margin-top:10px;}
+  .fld{display:flex;align-items:center;gap:6px;}
+  .fld label{font-size:12px;color:var(--dim);}
+  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .stepper button{width:34px;height:34px;background:#0e1613;color:var(--gold);border:none;font-size:20px;font-weight:700;}
+  .stepper span{min-width:26px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;}
+  input[type=number]{width:74px;height:34px;background:#0e1613;border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:0 8px;font-size:15px;text-align:right;font-variant-numeric:tabular-nums;}
+  input.mini{width:54px;height:32px;padding:0 7px;font-size:14px;}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+  /* betting-action strip */
+  .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .act{background:#0e1613;color:var(--gold);border:1px solid var(--line);border-radius:8px;padding:9px 13px;font-size:14px;font-weight:700;min-height:36px;}
+  .act:active{transform:scale(.96);}
+  .act.ghost{color:var(--dim);}
+  .act.prime{background:var(--gold);color:#23200f;border-color:var(--gold);}
+  .raisegrp{display:inline-flex;gap:4px;align-items:center;}
+
+  /* 4×13 picker (suits × ranks), one tap per card */
+  .picker{display:grid;grid-template-columns:repeat(13,1fr);gap:3px;}
+  .pk{aspect-ratio:3/4;border-radius:4px;background:#f7f5ef;border:1px solid #c9c3b4;color:#15110c;
+    font-weight:800;font-size:clamp(9px,2.6vw,13px);display:flex;align-items:center;justify-content:center;padding:0;line-height:1;}
+  .pk:disabled{opacity:.22;}
+  .pk.used{opacity:.22;}
+  .sp{color:#1a1a1a;} .he{color:#d11f2a;} .di{color:#1f6fd0;} .cl{color:#1f9d57;}
+
+  .target-hint{font-size:11px;color:var(--gold);margin-top:8px;min-height:14px;}
+
+  /* recommendation output */
+  #out{min-height:120px;}
+  .verdict{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .action{font-size:30px;font-weight:900;letter-spacing:.5px;}
+  .action.bet,.action.raise{color:var(--gold);} .action.call{color:var(--ok);}
+  .action.check{color:var(--ink);} .action.fold{color:var(--bad);}
+  .size{font-size:17px;color:var(--dim);font-weight:700;}
+  .metrics{display:flex;gap:10px;margin:12px 0 6px;flex-wrap:wrap;}
+  .metric{flex:1 1 90px;background:#0e1613;border:1px solid var(--line);border-radius:10px;padding:8px 10px;}
+  .metric .k{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);}
+  .metric .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+  .metric .v.eq{color:var(--gold);} .metric .v.odds{color:var(--ok);}
+  .why{font-size:13.5px;color:var(--ink);line-height:1.5;margin-top:4px;}
+  .why .tag{color:var(--dim);}
+  .madeline{font-size:13px;color:var(--dim);margin-top:2px;}
+  .hint{color:var(--dim);font-size:14px;}
+  .warnline{color:var(--warn);font-size:12px;margin-top:8px;}
+
+  .btn{width:100%;background:var(--gold);color:#23200f;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:800;margin-top:4px;}
+  .btn.ghost{background:transparent;color:var(--gold);border:1px solid rgba(233,196,106,.5);}
+  .foot{font-size:11px;color:var(--dim);text-align:center;margin-top:14px;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>♠ Poker Coach</h1>
+  <span class="sub" id="gameLbl">No-Limit Hold'em</span>
+</header>
+
+<div class="card-box">
+  <div class="label">Your cards</div>
+  <div class="slots" id="holeSlots"></div>
+  <div class="label" style="margin-top:12px">Board</div>
+  <div class="board-row"><div class="slots" id="boardSlots"></div></div>
+  <div class="target-hint" id="targetHint"></div>
+</div>
+
+<div class="card-box">
+  <div class="row">
+    <div class="fld"><label>Opponents</label>
+      <div class="stepper"><button onclick="bumpOpp(-1)">−</button><span id="oppN">2</span><button onclick="bumpOpp(1)">+</button></div>
+    </div>
+    <div class="fld" style="margin-left:auto"><label>Blinds</label>
+      <input id="sb" class="mini" type="number" inputmode="decimal" step="0.5" min="0" value="1"> /
+      <input id="bb" class="mini" type="number" inputmode="decimal" step="0.5" min="0" value="2">
+    </div>
+  </div>
+
+  <div class="label" style="margin-top:12px">Betting — tap as it goes around</div>
+  <div class="acts">
+    <button class="act" onclick="oppCall()">Call</button>
+    <span class="raisegrp"><input id="raiseTo" class="mini" type="number" inputmode="decimal" step="0.5" placeholder="to $"><button class="act prime" onclick="oppRaise()">Raise</button></span>
+    <button class="act ghost" onclick="oppFold()">Fold</button>
+    <button class="act ghost" onclick="nextStreet()">Next st.</button>
+    <button class="act ghost" onclick="postBlinds()">Blinds</button>
+    <button class="act ghost" onclick="undoBet()">Undo</button>
+  </div>
+
+  <div class="row" style="margin-top:12px">
+    <div class="fld"><label>Pot $</label><input id="pot" type="number" inputmode="decimal" step="0.5" min="0" value="0" oninput="recompute()"></div>
+    <div class="fld" style="margin-left:auto"><label>To call $</label><input id="toCall" type="number" inputmode="decimal" step="0.5" min="0" value="0" oninput="recompute()"></div>
+  </div>
+</div>
+
+<div class="card-box">
+  <div class="label">Tap to add a card</div>
+  <div class="picker" id="picker"></div>
+</div>
+
+<div class="card-box" id="out"></div>
+
+<button class="btn ghost" onclick="newHand()">New hand</button>
+
+<div class="foot">
+  Estimates your equity vs. random opponent hands (Monte-Carlo) + pot odds, and recommends a solid baseline play.
+  It knows only your cards &amp; the board — opponents are modeled, not read.<br>
+  For home games &amp; study. Real-time assistance is banned in most cardrooms/online.
+</div>
+
+<script src="vendor/pokersolver.js"></script>
+<script>
+// ---- model ----
+const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const SUITS = [['s','sp','♠'],['h','he','♥'],['d','di','♦'],['c','cl','♣']];
+const RVAL = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+const FULLDECK = (()=>{ const d=[]; for(const r of '23456789TJQKA') for(const s of 'shdc') d.push(r+s); return d; })();
+const PS = window.Hand;                                   // pokersolver, browser global
+
+let hole = [];   // up to 2
+let board = [];  // up to 5
+let opps = 2;
+
+const $ = id => document.getElementById(id);
+function suitMeta(ch){ return SUITS.find(s=>s[0]===ch); }
+function cardHtml(c){ const r=c[0], s=suitMeta(c[1]); return `<span class="pc ${s[1]}">${r==='T'?'10':r}${s[2]}</span>`; }
+
+// ---- equity (Monte-Carlo) — same approach as the table's bots ----
+function equityMC(hole, board, oppCount, iters){
+  oppCount = Math.max(1, oppCount|0); iters = Math.max(1, iters|0);
+  const dead = new Set([...hole, ...board]);
+  const deck = FULLDECK.filter(c=>!dead.has(c));
+  const boardNeed = 5 - board.length;
+  const need = boardNeed + oppCount*2;
+  if(need > deck.length) return null;
+  let score = 0;
+  for(let it=0; it<iters; it++){
+    for(let i=0;i<need;i++){ const j=i+Math.floor(Math.random()*(deck.length-i)); const t=deck[i];deck[i]=deck[j];deck[j]=t; }
+    let idx=0; const fb=board.slice();
+    for(let i=0;i<boardNeed;i++) fb.push(deck[idx++]);
+    const mine = PS.solve([...hole,...fb]);
+    const hands=[mine];
+    for(let o=0;o<oppCount;o++) hands.push(PS.solve([deck[idx++],deck[idx++],...fb]));
+    const w = PS.winners(hands);
+    if(w.includes(mine)) score += (w.length===1?1:1/w.length);
+  }
+  return score/iters;
+}
+// draw detection for the semi-bluff note (flush draw or open-ender using the board)
+function bySuit(cards){ const c={}; cards.forEach(x=>c[x[1]]=(c[x[1]]||0)+1); return c; }
+function hasFlushDraw(cards){ const v=Object.values(bySuit(cards)); return v.some(n=>n===4)&&!v.some(n=>n>=5); }
+function hasOESD(cards){ let rs=[...new Set(cards.map(c=>RVAL[c[0]]))]; if(rs.includes(14))rs.push(1); rs.sort((a,b)=>a-b);
+  for(let i=0;i+3<rs.length;i++) if(rs[i+3]-rs[i]===3) return true; return false; }
+
+const STREET = b => b===0?'Preflop' : b===3?'Flop' : b===4?'Turn' : b===5?'River' : '—';
+const money = n => '$'+(Math.round(n*100)/100).toLocaleString(undefined,{minimumFractionDigits:(Math.abs(n)%1?2:0),maximumFractionDigits:2});
+const pct = x => (x*100).toFixed(0)+'%';
+
+// ---- recommendation ----
+function recommend(){
+  if(hole.length < 2) return { incomplete:true };
+  const pot = Math.max(0, parseFloat($('pot').value)||0);
+  const toCall = Math.max(0, parseFloat($('toCall').value)||0);
+  const iters = board.length>=4 ? 1200 : board.length===3 ? 900 : 500;   // tighter when fewer unknowns
+  const eq = equityMC(hole, board, opps, iters);
+  if(eq==null) return { incomplete:true };
+  const cards=[...hole,...board];
+  const draw = board.length>=3 && board.length<5 && (hasFlushDraw(cards) || hasOESD(cards));
+  const potOdds = toCall>0 ? toCall/(pot+toCall) : null;
+  let made = null;
+  if(board.length>=3){ try{ made = PS.solve(cards).descr || PS.solve(cards).name; }catch(e){} }
+
+  let action, size=null, why;
+  if(toCall <= 0){                                   // no bet to us: check or bet
+    if(eq >= 0.58){ action='BET'; size=0.6*(pot||0); why='you’re ahead of the field — bet for value'; }
+    else if(draw && eq >= 0.34){ action='BET'; size=0.55*(pot||0); why='strong draw — semi-bluff for fold equity + outs'; }
+    else { action='CHECK'; why = eq>=0.45 ? 'playable but not a clear value bet — control the pot' : 'not enough to bet into the field'; }
+  } else {                                           // facing a bet: raise / call / fold
+    if(eq >= 0.72){ action='RAISE'; size=pot + 2*toCall; why='well ahead — raise for value'; }
+    else if(eq >= potOdds + 0.03){ action='CALL'; why='your equity beats the price you’re paying'; }
+    else if(draw && eq >= potOdds){ action='CALL'; why='drawing and getting about the right price'; }
+    else { action='FOLD'; why='equity is below the price — folding is best'; }
+  }
+  return { eq, potOdds, draw, action, size, why, made, pot, toCall };
+}
+
+// ---- render ----
+function recompute(){
+  const out = $('out'); const r = recommend();
+  if(r.incomplete){ out.innerHTML = '<div class="hint">Add your two cards to get a read.</div>'; return; }
+  const cls = r.action.toLowerCase();
+  const sizeStr = r.size!=null && r.size>0 ? `<span class="size">~ ${money(r.size)}</span>` : '';
+  let oddsMetric = '';
+  if(r.potOdds!=null) oddsMetric = `<div class="metric"><div class="k">Pot odds</div><div class="v odds">${pct(r.potOdds)}</div></div>`;
+  const madeLine = r.made ? `<div class="madeline">You have: <b style="color:var(--ink)">${r.made}</b></div>` : '';
+  const edge = r.potOdds!=null ? `<span class="tag"> · need ${pct(r.potOdds)} to call, you have ${pct(r.eq)}</span>` : '';
+  out.innerHTML = `
+    <div class="verdict"><span class="action ${cls}">${r.action}</span>${sizeStr}</div>
+    <div class="metrics">
+      <div class="metric"><div class="k">Equity · ${STREET(board.length)}</div><div class="v eq">${pct(r.eq)}</div></div>
+      ${oddsMetric}
+      <div class="metric"><div class="k">vs opponents</div><div class="v">${opps}</div></div>
+    </div>
+    <div class="why">${r.why}${edge}${r.draw?' <span class="tag">(+draw)</span>':''}</div>
+    ${madeLine}`;
+}
+
+function renderSlots(){
+  const hs = $('holeSlots'); hs.innerHTML='';
+  for(let i=0;i<2;i++){ hs.appendChild(slotEl(hole[i], 'hole', i)); }
+  const bs = $('boardSlots'); bs.innerHTML='';
+  for(let i=0;i<5;i++){ const el=slotEl(board[i], 'board', i); if(i===3||i===4) el.classList.add('sep'); bs.appendChild(el); }
+  const need = hole.length<2 ? 'your cards' : (board.length<5 ? 'the board' : 'board complete');
+  $('targetHint').textContent = (hole.length<2||board.length<5) ? `Next tap fills: ${need}` : 'Full board — tap a card to replace one';
+}
+function slotEl(card, kind, i){
+  const d=document.createElement('div'); d.className='slot'+(card?' filled':'');
+  if(card){ d.innerHTML=cardHtml(card); d.onclick=()=>{ (kind==='hole'?hole:board).splice(i,1); refresh(); }; }
+  return d;
+}
+function renderPicker(){
+  const used=new Set([...hole,...board]); const pk=$('picker'); pk.innerHTML='';
+  for(const [sc,scls,sym] of SUITS){
+    for(const r of RANKS){
+      const c=r+sc; const b=document.createElement('button');
+      b.className='pk '+scls+(used.has(c)?' used':''); b.textContent=(r==='T'?'10':r)+sym; b.disabled=used.has(c);
+      b.onclick=()=>place(c); pk.appendChild(b);
+    }
+  }
+}
+function place(c){
+  if(hole.length<2) hole.push(c);
+  else if(board.length<5) board.push(c);
+  else return;
+  refresh();
+}
+function bumpOpp(d){ snap(); opps=Math.max(1,Math.min(9,opps+d)); $('oppN').textContent=opps; recompute(); }
+
+// ---- betting tracker: build the pot + amount-to-call as the action goes around ----
+const r2 = n => Math.round(n*100)/100;
+const getPot = () => Math.max(0, parseFloat($('pot').value)||0);
+const getCall = () => Math.max(0, parseFloat($('toCall').value)||0);
+const setPot = v => { $('pot').value = r2(v); };
+const setCall = v => { $('toCall').value = r2(v); };
+let betStack = [];
+function snap(){ betStack.push({ pot:getPot(), call:getCall(), opps }); if(betStack.length>50) betStack.shift(); }
+function postBlinds(){ snap(); const sb=parseFloat($('sb').value)||0, bb=parseFloat($('bb').value)||0; setPot(getPot()+sb+bb); setCall(bb); recompute(); }
+function oppCall(){ snap(); setPot(getPot()+getCall()); recompute(); }                       // a caller matches the current bet
+function oppRaise(){ const to=parseFloat($('raiseTo').value)||0; if(to<=getCall()+1e-9) return; snap(); setPot(getPot()+to); setCall(to); $('raiseTo').value=''; recompute(); }  // raiser puts in "to"
+function oppFold(){ snap(); if(opps>1){ opps--; $('oppN').textContent=opps; } recompute(); }
+function nextStreet(){ snap(); setCall(0); $('raiseTo').value=''; recompute(); }               // new betting round — pot carries, bet resets
+function undoBet(){ const s=betStack.pop(); if(!s) return; setPot(s.pot); setCall(s.call); opps=s.opps; $('oppN').textContent=opps; recompute(); }
+
+function newHand(){
+  hole=[]; board=[]; betStack=[]; $('raiseTo').value='';
+  const sb=parseFloat($('sb').value)||0, bb=parseFloat($('bb').value)||0;
+  setPot(sb+bb); setCall(bb);                                                                  // blinds auto-posted
+  refresh();
+}
+function refresh(){ renderSlots(); renderPicker(); recompute(); }
+
+// seed the opening pot with the blinds on first load
+(function(){ const sb=parseFloat($('sb').value)||0, bb=parseFloat($('bb').value)||0; setPot(sb+bb); setCall(bb); })();
+refresh();
+</script>
+</body>
+</html>
