@@ -60,6 +60,8 @@
   .act.prime{background:var(--gold);color:#23200f;border-color:var(--gold);}
   .raisegrp{display:inline-flex;gap:4px;align-items:center;}
   .minilbl{font-size:12px;color:var(--dim);}
+  .dollarline{font-size:12.5px;color:var(--dim);margin-top:8px;text-align:right;font-variant-numeric:tabular-nums;}
+  .dollarline b{color:var(--ink);font-weight:700;}
 
   /* 4×13 picker (suits × ranks), one tap per card */
   .picker{display:grid;grid-template-columns:repeat(13,1fr);gap:3px;}
@@ -138,6 +140,7 @@
     <div class="fld"><label>Pot ¢</label><input id="pot" type="number" inputmode="numeric" step="5" min="0" value="0" oninput="recompute()"></div>
     <div class="fld" style="margin-left:auto"><label>To call ¢</label><input id="toCall" type="number" inputmode="numeric" step="5" min="0" value="0" oninput="recompute()"></div>
   </div>
+  <div class="dollarline" id="dollarLine"></div>
 </div>
 
 <div class="card-box">
@@ -200,8 +203,8 @@ function hasOESD(cards){ let rs=[...new Set(cards.map(c=>RVAL[c[0]]))]; if(rs.in
   for(let i=0;i+3<rs.length;i++) if(rs[i+3]-rs[i]===3) return true; return false; }
 
 const STREET = b => b===0?'Preflop' : b===3?'Flop' : b===4?'Turn' : b===5?'River' : '—';
-const money = n => Math.round(n) + '¢';            // amounts are whole cents (nickel/dime game)
-const round5 = n => Math.round(n/5)*5;                   // round suggested sizes to the nearest nickel
+const money = n => '$' + (Math.round(n)/100).toFixed(2);  // entry is cents, totals shown in dollars
+const round5 = n => Math.round(n/5)*5;                     // round suggested sizes to the nearest nickel
 const pct = x => (x*100).toFixed(0)+'%';
 
 // ---- recommendation ----
@@ -209,7 +212,7 @@ function recommend(){
   if(hole.length < 2) return { incomplete:true };
   const pot = Math.max(0, parseFloat($('pot').value)||0);
   const toCall = Math.max(0, parseFloat($('toCall').value)||0);
-  const iters = board.length>=4 ? 1200 : board.length===3 ? 900 : 500;   // tighter when fewer unknowns
+  const iters = board.length>=4 ? 2500 : board.length===3 ? 1800 : 1500;   // more runs = steadier % (esp. multiway)
   const eq = equityMC(hole, board, opps, iters);
   if(eq==null) return { incomplete:true };
   const cards=[...hole,...board];
@@ -233,7 +236,12 @@ function recommend(){
 }
 
 // ---- render ----
+function updateDollars(){                                  // totals shown in dollars (entry stays in cents)
+  const p = Math.max(0, parseFloat($('pot').value)||0), c = Math.max(0, parseFloat($('toCall').value)||0);
+  $('dollarLine').innerHTML = 'Pot <b>$' + (p/100).toFixed(2) + '</b>' + (c>0 ? '  ·  to call <b>$' + (c/100).toFixed(2) + '</b>' : '');
+}
 function recompute(){
+  updateDollars();
   const out = $('out'); const r = recommend();
   if(r.incomplete){ out.innerHTML = '<div class="hint">Add your two cards to get a read.</div>'; return; }
   const cls = r.action.toLowerCase();
@@ -295,7 +303,7 @@ function snap(){ betStack.push({ pot:getPot(), call:getCall(), opps }); if(betSt
 function postBlinds(){ snap(); const sb=parseFloat($('sb').value)||0, bb=parseFloat($('bb').value)||0; setPot(getPot()+sb+bb); setCall(bb); recompute(); }
 function oppCall(){ snap(); setPot(getPot()+getCall()); recompute(); }                       // a caller matches the current bet
 function oppRaise(){ const to=parseFloat($('raiseTo').value)||0; if(to<=getCall()+1e-9) return; snap(); setPot(getPot()+to); setCall(to); $('raiseTo').value=''; recompute(); }  // raiser puts in "to"
-function oppFold(){ snap(); if(opps>1){ opps--; $('oppN').textContent=opps; } recompute(); }
+function oppFold(){ snap(); if(opps>1){ opps--; $('oppN').textContent=opps; } recompute(); }   // an opponent folds → fewer to beat
 function nextStreet(){ snap(); setCall(0); $('raiseTo').value=''; recompute(); }               // new betting round — pot carries, bet resets
 function undoBet(){ const s=betStack.pop(); if(!s) return; setPot(s.pot); setCall(s.call); opps=s.opps; $('oppN').textContent=opps; recompute(); }
 
